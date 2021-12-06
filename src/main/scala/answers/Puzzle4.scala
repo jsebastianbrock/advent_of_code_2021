@@ -5,8 +5,6 @@ object Puzzle4 extends App {
   val boardsSource = io.Source.fromFile("C:\\Users\\Sebastian Brock\\workspace\\advent_of_code_2021\\src\\main\\resources\\Puzzle4Boards.csv")
 
   val draws = drawsSource.getLines.drop(1).toList.map(_.toInt)
-  println(s"Draws: $draws")
-
   val boardsUnparsed = boardsSource.getLines.drop(1).toList
 
   def getBoards(ub: List[String], b: List[List[String]]) : List[List[String]] = {
@@ -15,8 +13,6 @@ object Puzzle4 extends App {
   }
 
   val boards = getBoards(boardsUnparsed,Nil).map(_.map(_.split(' ').toList.filterNot(_.isEmpty)))
-
-  println(s"Boards: $boards")
 
   /* Check number against boards
    * Mark spot with X
@@ -28,10 +24,7 @@ object Puzzle4 extends App {
   def checkRowForDraw(row: List[String], draw: String): List[String] = {
     row.find(r => r == draw) match {
       case Some(_) =>
-        val newRow = row.map(n => if(n == draw) "X" else n)
-
-        println(s"New row: [${newRow}]")
-        newRow
+        row.map(n => if(n == draw) "X" else n)
       case _ =>
         row
     }
@@ -51,8 +44,7 @@ object Puzzle4 extends App {
     println(s"Checking board for win: [$board]")
     val horizontalWin = board.exists(row => !row.exists(_ != "X"))
     val verticalWin = turnBoard(board).exists(row => !row.exists(_ != "X"))
-    //((horizontalWin || verticalWin), board)
-    println(s"Is win? Vert: [$verticalWin], horz: [$horizontalWin]")
+
     if(horizontalWin || verticalWin) Some(board) else None
   }
 
@@ -61,28 +53,46 @@ object Puzzle4 extends App {
       board.map(r=> checkRowForDraw(r,draw.toString))
     }
 
-    println(s"Draw: [$draw]")
-    println(s"New Board: [${newBoards}]")
     newBoards
   }
 
-  def playGame(i: Int, boards: List[List[List[String]]]) : (List[List[String]], Int) = {
-    println(s"Draw count: [$i], Draw: [${draws(i)}]")
+  def playGameFirstWinning(i: Int, boards: List[List[List[String]]]) : (List[List[String]], Int) = {
     val newBoards = playRound(draws(i), boards)
     newBoards.map(checkBingo).find (x => x.nonEmpty) match {
       case Some(winner) =>
         (winner.get, draws(i))
       case _ =>
-        playGame(i + 1, newBoards)
+        playGameFirstWinning(i + 1, newBoards)
     }
-
   }
 
-  val (board,draw) = playGame(0,boards)
+  def solvePart1 = {
+    val (board,draw) = playGameFirstWinning(0,boards)
 
-  println(s"winning draw: [$draw]")
-  println(s"Winning board: [$board]")
-  val sum = board.flatten.filterNot(_ == "X").map(_.toInt).sum
-  val answer = sum * draw
-  println(s"Answer is: [$answer]")
+    val sum = board.flatten.filterNot(_ == "X").map(_.toInt).sum
+    sum * draw
+  }
+
+  println(s"Part 1 answer is: [$solvePart1]")
+
+  def playGameSecondWinning(i: Int, boards: List[List[List[String]]]) : (List[List[String]], Int) = {
+    val newBoards = playRound(draws(i), boards)
+
+    //If last board is left and won, don't remove it.
+    val removedWinners = if(newBoards.length != 1 )newBoards.zip(newBoards.map(checkBingo(_).isDefined)).filterNot(p => p._2).map(_._1) else newBoards
+
+    // If last board is left and still hasn't won, draw again.
+    if(removedWinners.length == 1 && removedWinners.map(checkBingo).exists(x => x.nonEmpty)) {
+      (removedWinners.head, draws(i))
+    } else { playGameSecondWinning(i + 1, removedWinners) }
+  }
+
+  def solvePart2 = {
+    val (board,draw) = playGameSecondWinning(0,boards)
+    val sum = board.flatten.filterNot(_ == "X").map(_.toInt).sum
+    sum * draw
+  }
+
+  println(s"Part 2 answer is: [$solvePart2]")
+
 }
